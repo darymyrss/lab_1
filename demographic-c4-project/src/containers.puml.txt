@@ -1,0 +1,39 @@
+@startuml "Demographic System - Container Diagram"
+!include <C4/C4_Container>
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма контейнеров C4 (Level 2) — ИС мониторинга и прогнозирования населения РФ
+
+Person(demographer, "Демограф-аналитик", "Пользователь системы")
+Person(gov_official, "Представитель органов власти", "Пользователь системы")
+
+System_Ext(rosstat_api, "ЕМИСС / Росстат API", "Внешний источник данных")
+System_Ext(gis_service, "Геоинформационный сервис", "Внешний сервисы карт")
+
+System_Boundary(demo_system, "ИС мониторинга и прогнозирования населения РФ") {
+    Container(frontend_web, "Веб-интерфейс аналитика", "React 18 / TypeScript / Tailwind", "Веб-приложение для ввода сценарных условий, просмотра пирамид и отчетов")
+    Container(mobile_app, "Мобильное приложение", "React Native / iOS & Android", "Мобильный клиент для дашбордов и оперативного просмотра ключевых показателей")
+    Container(api_gateway, "API Gateway & Core Service", "Python / FastAPI", "Маршрутизирует API-запросы, управляет сессиями, авторизацией и CRUD-операциями")
+    Container(forecast_engine, "Модуль прогнозирования", "Python / NumPy / SciPy / Statsmodels", "Выполняет расчёты когортно-компонентного метода, моделей ARIMA и Holt-Winters")
+    ContainerDb(database, "Центральная База Данных", "PostgreSQL 16", "Хранит временные ряды населения, распакованные пирамиды 0-100 лет и сохраненные прогнозы")
+    Container(cache_broker, "Кэш и Брокер задач", "Redis 7", "Кэширует тяжелые расчеты и управляет очередью асинхронных задач")
+}
+
+Rel(demographer, frontend_web, "Взаимодействует через браузер", "HTTPS")
+Rel(gov_official, mobile_app, "Просмотр экспресс-дашбордов", "HTTPS")
+
+Rel(frontend_web, api_gateway, "Передача параметров сценария и запросы данных", "HTTPS / JSON")
+Rel(mobile_app, api_gateway, "Запросы к аналитическим витринам", "HTTPS / JSON")
+
+Rel(api_gateway, forecast_engine, "Передача задач на запуск прогнозов", "gRPC / HTTP2")
+Rel(api_gateway, cache_broker, "Запись/чтение сессий и кэша ответов", "RESP / TCP (порт 6379)")
+Rel(api_gateway, database, "Чтение и запись профилей, метаданных и отчетов", "SQL / TCP (порт 5432)")
+
+Rel(forecast_engine, database, "Загрузка возрастно-половых структур и сохранение прогнозов", "SQL / TCP (порт 5432)")
+Rel(forecast_engine, cache_broker, "Получение задач из очереди", "RESP / TCP (порт 6379)")
+
+Rel(api_gateway, rosstat_api, "Синхронизация первичной статистики", "HTTPS / REST")
+Rel(frontend_web, gis_service, "Загрузка тайлов и слоев векторных карт", "HTTPS / REST")
+
+@enduml
