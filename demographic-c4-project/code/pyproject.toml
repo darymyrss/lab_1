@@ -1,0 +1,10 @@
+[project]
+name = "heatmap-styler"
+version = "0.1.0"
+description = "DemoScope: компонент Heatmap Styler (C4 Level 4, паттерн Strategy)"
+requires-python = ">=3.10"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["heatmap_styler", "demo.py", "tests"]
