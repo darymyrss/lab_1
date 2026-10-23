@@ -1,0 +1,48 @@
+@startuml "DemoScope - Web Analyst Component View"
+' Подключение официальной библиотеки макросов C4 напрямую из GitHub
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма компонентов C4 (Level 3) — контейнер «Веб-интерфейс аналитика»
+
+Person(analyst, "Демограф-аналитик", "Задаёт параметры сценария, запускает прогноз, анализирует результаты")
+Person(official, "Представитель органов власти", "Просматривает дашборды, тепловые карты и отчёты")
+
+Container(api_gateway, "API Gateway & Core Service", "Python / FastAPI", "Единая точка входа REST API системы")
+System_Ext(iam, "Единая система авторизации (ЕСИА / IAM)", "Аутентификация пользователей, выдача OAuth2-токенов")
+System_Ext(gis_service, "Геоинформационный сервис (GIS)", "Тайлы подложки и векторные границы регионов")
+
+Container_Boundary(analyst_web, "Веб-интерфейс аналитика [React 18 / TypeScript / Tailwind CSS]") {
+    Component(app_router, "App Router & Layout", "React Router 6", "Маршрутизация разделов SPA, общий каркас страниц, защита маршрутов")
+    Component(dashboard_ui, "Dashboard Page", "React 18 / Recharts", "Мониторинг: KPI-карточки, графики динамики, фильтры субъекта, типа МО и периода")
+    Component(forecast_ui, "Forecast Workspace", "React 18 / Recharts", "Ввод параметров сценария, выбор модели и горизонта, график факт + прогноз с 95% ДИ, половозрастная пирамида")
+    Component(report_ui, "Report Center", "React 18", "Запуск генерации аналитической справки, прогресс, предпросмотр и скачивание PDF")
+    Component(map_ui, "Map View", "React-Leaflet", "Тепловая карта субъектов и муниципалитетов, легенда, всплывающие подсказки")
+    Component(heatmap_styler, "Heatmap Styler", "TypeScript module", "Классификация значений показателя и назначение цветов регионам (паттерн «Стратегия»)")
+    Component(state_store, "App State Store", "Redux Toolkit", "Единое состояние приложения: фильтры, сценарии, кэш ответов API, статусы загрузки")
+    Component(auth_client, "Auth Client", "TypeScript / oidc-client-ts", "Вход через IAM по OAuth2 (Authorization Code + PKCE), хранение и обновление токенов")
+    Component(api_client, "API Client", "Axios / TanStack Query", "Типизированный доступ к REST API: запросы, повторные попытки, обработка ошибок")
+}
+
+Rel(analyst, app_router, "Открывает разделы веб-приложения", "HTTPS")
+Rel(official, app_router, "Просматривает дашборды, карты и отчёты", "HTTPS")
+
+Rel(app_router, auth_client, "Проверяет активную сессию перед открытием раздела", "TS Call")
+Rel(app_router, dashboard_ui, "Монтирует страницу мониторинга", "React Render")
+Rel(app_router, forecast_ui, "Монтирует рабочую область прогноза", "React Render")
+Rel(app_router, report_ui, "Монтирует центр отчётов", "React Render")
+
+Rel(dashboard_ui, map_ui, "Встраивает тепловую карту выбранного субъекта", "React Props")
+Rel(dashboard_ui, state_store, "Читает показатели, изменяет фильтры", "TS Call / React Hooks")
+Rel(forecast_ui, state_store, "Сохраняет параметры сценария, читает результат прогноза", "TS Call / React Hooks")
+Rel(report_ui, state_store, "Инициирует генерацию справки, читает статус", "TS Call / React Hooks")
+Rel(map_ui, state_store, "Читает значения показателя по территориям", "TS Call / React Hooks")
+Rel(map_ui, heatmap_styler, "Запрашивает классы, цвета и легенду", "TS Call")
+
+Rel(state_store, api_client, "Запрашивает данные при изменении фильтров и сценариев", "TS Call (async)")
+Rel(api_client, auth_client, "Получает access-токен для заголовка Authorization", "TS Call")
+
+Rel(api_client, api_gateway, "Запросы /api/population, /api/heatmap, /api/forecast, /api/report", "HTTPS / JSON")
+Rel(auth_client, iam, "Перенаправление на вход, обмен кода на токены", "HTTPS / OAuth2 (PKCE)")
+Rel(map_ui, gis_service, "Загрузка тайлов и векторных границ регионов", "HTTPS / REST")
+@enduml
