@@ -1,0 +1,104 @@
+@startuml "DemoScope - Heatmap Styler Class Diagram"
+title Диаграмма классов UML (Level 4) — компонент Heatmap Styler (паттерн «Стратегия»)
+
+class HeatmapStylerContext {
+  - _strategy : ClassificationStrategy
+  - _palettes : PaletteRegistry
+  - _class_count : int
+  + __init__(strategy: ClassificationStrategy, palettes: PaletteRegistry, class_count: int = 5)
+  + strategy : ClassificationStrategy {readOnly}
+  + set_strategy(strategy: ClassificationStrategy) : None
+  + style(metrics: Sequence[RegionMetric]) : HeatmapStyle
+  - {static} _class_index(breaks: Sequence[float], value: float, class_total: int) : int
+  - {static} _format_label(lower: float, upper: float) : str
+}
+
+interface ClassificationStrategy <<interface>> {
+  {abstract} + name : str
+  {abstract} + palette_kind : PaletteKind
+  {abstract} + compute_breaks(values: Sequence[float], class_count: int) : list[float]
+}
+
+class EqualIntervalStrategy {
+  + name : str
+  + palette_kind : PaletteKind
+  + compute_breaks(values: Sequence[float], class_count: int) : list[float]
+}
+
+class QuantileStrategy {
+  + name : str
+  + palette_kind : PaletteKind
+  + compute_breaks(values: Sequence[float], class_count: int) : list[float]
+}
+
+class DivergingStrategy {
+  + name : str
+  + palette_kind : PaletteKind
+  + compute_breaks(values: Sequence[float], class_count: int) : list[float]
+}
+
+class StrategyRegistry {
+  - _factories : dict[str, StrategyFactory]
+  + register(key: str, factory: StrategyFactory) : None
+  + create(key: str) : ClassificationStrategy
+  + keys() : list[str]
+}
+
+class PaletteRegistry {
+  + get(kind: PaletteKind, class_count: int) : Palette
+  - {static} _sample(source: tuple[str, ...], count: int) : tuple[str, ...]
+}
+
+enum PaletteKind {
+  SEQUENTIAL
+  DIVERGING
+}
+
+class RegionMetric <<dataclass>> {
+  + region_id : str
+  + name : str
+  + value : float | None
+}
+
+class Palette <<dataclass>> {
+  + kind : PaletteKind
+  + colors : tuple[str, ...]
+  + no_data_color : str
+}
+
+class HeatmapStyle <<dataclass>> {
+  + method_name : str
+  + classes : tuple[ColorClass, ...]
+  + regions : tuple[StyledRegion, ...]
+}
+
+class ColorClass <<dataclass>> {
+  + index : int
+  + lower : float
+  + upper : float
+  + color : str
+  + label : str
+}
+
+class StyledRegion <<dataclass>> {
+  + region_id : str
+  + name : str
+  + value : float | None
+  + color : str
+  + class_index : int | None
+}
+
+HeatmapStylerContext *-- "1" ClassificationStrategy : использует >
+HeatmapStylerContext o-- "1" PaletteRegistry : запрашивает палитру >
+ClassificationStrategy <|.. EqualIntervalStrategy
+ClassificationStrategy <|.. QuantileStrategy
+ClassificationStrategy <|.. DivergingStrategy
+StrategyRegistry ..> ClassificationStrategy : создаёт >
+HeatmapStylerContext ..> RegionMetric : принимает >
+HeatmapStylerContext ..> HeatmapStyle : возвращает >
+HeatmapStyle *-- "0..*" ColorClass
+HeatmapStyle *-- "0..*" StyledRegion
+PaletteRegistry ..> Palette : создаёт >
+ClassificationStrategy ..> PaletteKind
+Palette --> PaletteKind
+@enduml
