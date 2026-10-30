@@ -8,11 +8,11 @@ title Диаграмма компонентов C4 (Level 3) — контейн�
 Person(analyst, "Демограф-аналитик", "Задаёт параметры сценария, запускает прогноз, анализирует результаты")
 Person(official, "Представитель органов власти", "Просматривает дашборды, тепловые карты и отчёты")
 
-Container(api_gateway, "API Gateway & Core Service", "Python / FastAPI", "Единая точка входа REST API системы")
-System_Ext(iam, "Единая система авторизации (ЕСИА / IAM)", "Аутентификация пользователей, выдача OAuth2-токенов")
+Container(api_backend, "API Gateway & Core Service", "Python / FastAPI", "Единая точка входа REST API системы")
+System_Ext(esia, "Единая система авторизации (ЕСИА / IAM)", "Аутентификация пользователей, выдача OAuth2-токенов")
 System_Ext(gis_service, "Геоинформационный сервис (GIS)", "Тайлы подложки и векторные границы регионов")
 
-Container_Boundary(analyst_web, "Веб-интерфейс аналитика [React 18 / TypeScript / Tailwind CSS]") {
+Container_Boundary(web_app, "Веб-интерфейс аналитика [React 18 / TypeScript / Tailwind CSS]") {
     Component(app_router, "App Router & Layout", "React Router 6", "Маршрутизация разделов SPA, общий каркас страниц, защита маршрутов")
     Component(dashboard_ui, "Dashboard Page", "React 18 / Recharts", "Мониторинг: KPI-карточки, графики динамики, фильтры субъекта, типа МО и периода")
     Component(forecast_ui, "Forecast Workspace", "React 18 / Recharts", "Ввод параметров сценария, выбор модели и горизонта, график факт + прогноз с 95% ДИ, половозрастная пирамида")
@@ -42,7 +42,7 @@ Rel(map_ui, heatmap_styler, "Запрашивает классы, цвета и 
 Rel(state_store, api_client, "Запрашивает данные при изменении фильтров и сценариев", "TS Call (async)")
 Rel(api_client, auth_client, "Получает access-токен для заголовка Authorization", "TS Call")
 
-Rel(api_client, api_gateway, "Запросы /api/population, /api/heatmap, /api/forecast, /api/report", "HTTPS / JSON")
-Rel(auth_client, iam, "Перенаправление на вход, обмен кода на токены", "HTTPS / OAuth2 (PKCE)")
+Rel(api_client, api_backend, "Запросы /api/population, /api/heatmap, /api/forecast, /api/report", "HTTPS / JSON")
+Rel(auth_client, esia, "Перенаправление на вход, обмен кода на токены", "HTTPS / OAuth2 (PKCE)")
 Rel(map_ui, gis_service, "Загрузка тайлов и векторных границ регионов", "HTTPS / REST")
 @enduml
