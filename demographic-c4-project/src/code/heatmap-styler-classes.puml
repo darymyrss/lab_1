@@ -101,4 +101,7 @@ HeatmapStyle *-- "0..*" StyledRegion
 PaletteRegistry ..> Palette : создаёт >
 ClassificationStrategy ..> PaletteKind
 Palette --> PaletteKind
+' Компоновка: стратегии располагаются друг под другом (скрытые связи не меняют смысл диаграммы)
+EqualIntervalStrategy -[hidden]down- QuantileStrategy
+QuantileStrategy -[hidden]down- DivergingStrategy
 @enduml
