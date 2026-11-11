@@ -10,6 +10,7 @@
 | ЛР1 | L1 Контекст, L2 Контейнеры | `demographic-c4-project/src/context.puml.txt`, `demographic-c4-project/src/containers.puml.txt` |
 | ЛР2 | L3 Компоненты | `demographic-c4-project/src/components/web-analyst-components.puml` |
 | ЛР3 | L4 Код (UML Class + Python, паттерн «Стратегия») | `demographic-c4-project/src/code/heatmap-styler-classes.puml`, `demographic-c4-project/code/` |
+| ЛР4 | L0 Ландшафт, Dynamic, Deployment (L2) | `demographic-c4-project/src/landscape/system-landscape.puml`, `demographic-c4-project/src/dynamic/dynamic-forecast.puml`, `demographic-c4-project/src/deployment/deployment-web.puml` |
 
 ## ЛР3: запуск кода
 
