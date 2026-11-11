@@ -1,0 +1,34 @@
+@startuml "DemoScope - Dynamic Diagram"
+' Подключение официальной библиотеки макросов C4 напрямую из GitHub
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Динамическая диаграмма — запуск сценарного прогноза с получением хода расчёта в реальном времени
+
+Person(analyst, "Демограф-аналитик", "Задаёт параметры сценария")
+
+Container_Boundary(web_app, "Веб-интерфейс аналитика [React 18 / TypeScript]") {
+    Component(forecast_ui, "Forecast Workspace", "React 18 / Recharts", "Форма сценария, прогресс, график факт + прогноз")
+    Component(state_store, "App State Store", "Redux Toolkit", "Состояние сценария и статуса расчёта")
+    Component(auth_client, "Auth Client", "oidc-client-ts", "Выдаёт действующий access-токен")
+    Component(api_client, "API Client", "Axios / WebSocket", "REST-запросы и канал событий WSS")
+}
+
+Container(api_backend, "API Gateway & Core Service", "Python / FastAPI", "Принимает задачу, ретранслирует события")
+Container(forecast_service, "Модуль прогнозирования", "Python / Statsmodels", "Когортно-компонентный метод, ARIMA, Holt-Winters")
+ContainerDb(redis_cache, "Кэш и брокер задач", "Redis 7", "Канал Pub/Sub событий расчёта")
+ContainerDb(database, "Центральная база данных", "PostgreSQL 16", "Исторические ряды и результаты прогнозов")
+
+Rel(analyst, forecast_ui, "1. Нажимает «Рассчитать» (модель, горизонт, сценарий)", "UI-событие в браузере")
+Rel(forecast_ui, state_store, "2. dispatch(runForecast(params))", "TS Call")
+Rel(state_store, api_client, "3. runForecast(request)", "TS Call (async)")
+Rel(api_client, auth_client, "4. getAccessToken()", "TS Call")
+Rel(api_client, api_backend, "5. POST /api/forecast → 202 Accepted {job_id}", "HTTPS / JSON, порт 443")
+Rel(api_client, api_backend, "6. Открывает канал /ws/forecast/{job_id}", "WSS (WebSocket / TLS), порт 443")
+Rel(api_backend, forecast_service, "7. StartForecast(job_id, params)", "gRPC / HTTP2, порт 50051")
+Rel(forecast_service, database, "8. SELECT ряды населения; INSERT результаты прогноза", "SQL / TCP, порт 5432")
+Rel(forecast_service, redis_cache, "9. PUBLISH forecast:{job_id} {progress, stage}", "RESP / TCP, порт 6379")
+Rel(redis_cache, api_backend, "10. Доставка события подписчику", "RESP Pub/Sub / TCP")
+Rel(api_backend, api_client, "11. Push-сообщения progress … done", "WSS / JSON")
+Rel(api_client, state_store, "12. dispatch(forecastProgress / forecastDone)", "TS Call")
+Rel(state_store, forecast_ui, "13. Перерисовка прогресса и графика с 95% ДИ", "React Hooks (useSelector)")
+@enduml
