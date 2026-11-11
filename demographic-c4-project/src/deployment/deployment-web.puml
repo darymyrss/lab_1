@@ -1,0 +1,58 @@
+@startuml "DemoScope - Deployment Diagram"
+' Подключение официальной библиотеки макросов C4 напрямую из GitHub
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма развёртывания (Level 2) — сегмент веб-интерфейса аналитика ИС DemoScope
+
+Deployment_Node(analyst_pc, "АРМ аналитика", "Windows 10/11, ПК ведомства") {
+    Deployment_Node(browser, "Веб-браузер", "Chrome / Яндекс Браузер / Edge") {
+        Container(web_app, "Веб-интерфейс аналитика (SPA)", "React 18 / TypeScript", "Исполняется в браузере пользователя")
+    }
+}
+
+Deployment_Node(cloud, "Облачная инфраструктура (ЦОД)", "Yandex Cloud, регион ru-central1, VPC demoscope-vpc") {
+    Deployment_Node(dmz, "Публичная подсеть (DMZ)", "10.10.1.0/24, группа безопасности sg-web") {
+        Deployment_Node(nlb, "Сетевой балансировщик", "Yandex Network Load Balancer, публичный IP") {
+            Container(lb, "Балансировщик L4", "TCP 443", "Распределяет соединения между web-узлами, health-check /healthz")
+        }
+        Deployment_Node(web_nodes, "Web-узлы ×2 (active-active, разные зоны доступности)", "Ubuntu 22.04 VM, Docker 26") {
+            Container(nginx, "Reverse Proxy + статика SPA", "Nginx 1.26", "SSL-терминация, раздача сборки web_app, балансировка upstream, upgrade WebSocket")
+        }
+    }
+    Deployment_Node(app_subnet, "Приватная подсеть приложений", "10.10.2.0/24, sg-app, без публичных IP") {
+        Deployment_Node(app_nodes, "Серверы приложений ×2", "Ubuntu 22.04 VM, Docker 26") {
+            Container(api_backend, "API Gateway & Core Service", "Python 3.12 / FastAPI / Uvicorn", "REST API и WebSocket-канал событий")
+        }
+        Deployment_Node(calc_node, "Вычислительный узел", "Ubuntu 22.04 VM, Docker 26, 8 vCPU") {
+            Container(forecast_service, "Модуль прогнозирования", "Python / Statsmodels", "Расчёт прогнозов по задачам из очереди")
+            ContainerDb(redis_cache, "Кэш и брокер задач", "Redis 7", "Кэш ответов, очередь задач, Pub/Sub")
+        }
+    }
+    Deployment_Node(db_subnet, "Подсеть БД", "10.10.3.0/24, sg-db") {
+        Deployment_Node(db_master, "Сервер БД (Master)", "Managed Service for PostgreSQL, зона A") {
+            ContainerDb(database, "Центральная БД", "PostgreSQL 16", "Все операции записи")
+        }
+        Deployment_Node(db_replica, "Сервер БД (Replica)", "Managed Service for PostgreSQL, зона B") {
+            ContainerDb(database_replica, "Реплика БД", "PostgreSQL 16 (hot standby)", "Чтение тяжёлых выборок, горячий резерв")
+        }
+    }
+}
+
+System_Ext(esia, "ЕСИА (IAM)", "esia.gosuslugi.ru")
+System_Ext(gis_service, "Геоинформационный сервис (GIS)", "Тайловый сервер карт")
+
+Rel(web_app, lb, "Загрузка SPA, запросы к API, канал событий", "HTTPS / TLS 1.3, WSS, порт 443")
+Rel(lb, nginx, "Проброс TCP-соединений", "TCP, порт 443")
+Rel(nginx, api_backend, "Проксирование /api и /ws (least_conn)", "HTTP / JSON, WebSocket, порт 8000")
+Rel(api_backend, forecast_service, "Постановка задач расчёта", "gRPC / HTTP2 + mTLS, порт 50051")
+Rel(api_backend, redis_cache, "Кэш, подписка на события", "RESP / TLS, порт 6379")
+Rel(forecast_service, redis_cache, "Публикация хода расчёта", "RESP / TLS, порт 6379")
+Rel(api_backend, database, "Запись и чтение", "SQL / TCP + TLS, порт 5432")
+Rel(forecast_service, database, "Запись результатов прогноза", "SQL / TCP + TLS, порт 5432")
+Rel(forecast_service, database_replica, "Чтение исторических рядов", "SQL / TCP + TLS, порт 5432")
+Rel(database, database_replica, "Потоковая репликация", "WAL / TCP, порт 5432")
+Rel(web_app, esia, "Вход пользователя (Authorization Code + PKCE)", "HTTPS / OAuth2, порт 443")
+Rel(api_backend, esia, "Проверка токенов", "HTTPS / OAuth2, порт 443")
+Rel(web_app, gis_service, "Тайлы и векторные границы", "HTTPS, порт 443")
+@enduml
