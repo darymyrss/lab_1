@@ -1,0 +1,50 @@
+@startuml
+' Интеграционный мастер-файл проекта DemoScope (зона ответственности тимлида)
+' Импорт подсистем выполняется по единому глоссарию идентификаторов (Glossary IDs)
+!include <C4/C4_Container>
+
+LAYOUT_WITH_LEGEND()
+
+title Сводная диаграмма контейнеров ИС DemoScope — мониторинг и прогнозирование населения РФ
+
+' === ГЛОБАЛЬНЫЕ АКТОРЫ (Тимлид — Бектеев Г.А.) ===
+Person(analyst, "Демограф-аналитик", "Мониторинг, сценарные прогнозы, справки")
+Person(official, "Представитель органов власти", "Дашборды, радар рисков, справки")
+
+System_Ext(esia, "ЕСИА (IAM)", "Аутентификация пользователей, OAuth 2.0 / OIDC")
+System_Ext(emiss, "ЕМИСС / БД ПМО Росстата", "Источник демографических рядов")
+System_Ext(gis_service, "Геоинформационный сервис (GIS)", "Тайлы и границы МО")
+System_Ext(llm_service, "Сервис языковой модели (LLM)", "Генерация текстовых выводов")
+
+System_Boundary(demoscope, "ИС DemoScope") {
+    ' === FRONT-END (Слисаренко Д.) ===
+    Container(web_app, "Веб-интерфейс аналитика", "React 18 / TypeScript", "SPA: мониторинг, тепловая карта, прогноз, справки")
+    Container(mobile_app, "Мобильное приложение", "React Native", "Экспресс-дашборд для руководителей")
+
+    ' === BACK-END (Алибеков А.) ===
+    Container(api_backend, "API Gateway & Core Service", "Python 3.12 / FastAPI", "REST API и WebSocket, бизнес-логика")
+    Container(forecast_service, "Модуль прогнозирования", "Python / Statsmodels", "Holt-Winters, ARIMA, когортно-компонентный метод")
+    ContainerDb(database, "Центральная БД", "PostgreSQL 16", "Ряды показателей, прогнозы, пользователи")
+    ContainerDb(redis_cache, "Кэш и брокер задач", "Redis 7", "Кэш API, очередь задач, Pub/Sub")
+
+    ' === ДАННЫЕ И МОДЕЛИ (Сырлыбаев Б.С.) ===
+    Container(etl_service, "Сервис загрузки данных (ETL)", "Python / Pandas", "Загрузка и очистка рядов Росстата")
+}
+
+' === ГЛОБАЛЬНЫЕ СВЯЗИ (совместная сборка проекта) ===
+Rel(analyst, web_app, "Работает в браузере", "HTTPS")
+Rel(official, mobile_app, "Просматривает показатели", "HTTPS")
+Rel(web_app, api_backend, "Запросы данных, запуск прогноза", "HTTPS / JSON, WSS")
+Rel(mobile_app, api_backend, "Запросы витрин", "HTTPS / JSON")
+Rel(web_app, esia, "Вход пользователя", "OAuth 2.0 + PKCE")
+Rel(web_app, gis_service, "Тайлы и границы", "HTTPS / REST")
+Rel(api_backend, esia, "Проверка токенов", "HTTPS / OAuth 2.0")
+Rel(api_backend, forecast_service, "Постановка задач расчёта", "gRPC / HTTP2")
+Rel(api_backend, database, "Чтение / запись", "SQL / TCP 5432")
+Rel(api_backend, redis_cache, "Кэш, события расчёта", "RESP / TCP 6379")
+Rel(api_backend, llm_service, "Генерация выводов справки", "HTTPS / JSON")
+Rel(forecast_service, database, "Ряды и результаты прогнозов", "SQL / TCP 5432")
+Rel(forecast_service, redis_cache, "Публикация хода расчёта", "RESP / TCP 6379")
+Rel(etl_service, emiss, "Получение выгрузок", "HTTPS")
+Rel(etl_service, database, "Загрузка очищенных рядов", "SQL / TCP 5432")
+@enduml
