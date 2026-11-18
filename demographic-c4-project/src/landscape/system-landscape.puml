@@ -1,6 +1,6 @@
-@startuml "DemoScope - System Landscape (Level 0)"
-' Подключение официальной библиотеки макросов C4 напрямую из GitHub
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+@startuml
+' Подключение библиотеки C4 из стандартной библиотеки PlantUML (stdlib) — сборка в CI без обращения к внешним URL
+!include <C4/C4_Container>
 
 LAYOUT_WITH_LEGEND()
 title Диаграмма системного ландшафта (Level 0) — встраивание веб-интерфейса DemoScope в государственную ИТ-инфраструктуру
