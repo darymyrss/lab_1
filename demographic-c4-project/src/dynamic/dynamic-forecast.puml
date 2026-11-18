@@ -1,6 +1,6 @@
-@startuml "DemoScope - Dynamic Diagram"
-' Подключение официальной библиотеки макросов C4 напрямую из GitHub
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+@startuml
+' Подключение библиотеки C4 из стандартной библиотеки PlantUML (stdlib) — сборка в CI без обращения к внешним URL
+!include <C4/C4_Component>
 
 title Динамическая диаграмма — запуск сценарного прогноза с получением хода расчёта в реальном времени
 
