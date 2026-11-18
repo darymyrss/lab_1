@@ -1,0 +1,95 @@
+name: Auto Render C4 Architecture Docs
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'demographic-c4-project/src/**', '.github/workflows/render-docs.yml' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PLANTUML_VERSION: 1.2026.9
+  SRC_DIR: demographic-c4-project/src
+  OUT_DIR: demographic-c4-project/docs/images
+
+jobs:
+  validate-and-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Java Environment
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Graphviz Engine
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq graphviz fonts-dejavu
+          dot -V
+
+      - name: Download PlantUML Jar Executable
+        run: |
+          wget -q https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar -O plantuml.jar
+          java -jar plantuml.jar -version | head -1
+
+      - name: Lint C4 coding standards (Rel_D/L/R/U, skinparam, protocols)
+        run: |
+          fail=0
+          for f in $(find "$SRC_DIR" -name '*.puml' | sort); do
+            echo "[INFO] Linting $f"
+            if grep -nE '\bRel_(D|U|L|R|Down|Up|Left|Right|Back|Neighbor)\(' "$f"; then
+              echo "::error file=$f::Macro Rel_D/Rel_U/Rel_L/Rel_R is banned by methodologist guidelines. Use standard Rel() macro."
+              fail=1
+            fi
+            if [ "$(basename "$f")" != "main.puml" ] && grep -niE '^\s*skinparam' "$f"; then
+              echo "::error file=$f::Local skinparam is banned: styles belong to main.puml only."
+              fail=1
+            fi
+            while IFS= read -r line; do
+              n=$(printf '%s' "${line#*:}" | grep -o '"' | wc -l)
+              if [ "$n" -lt 4 ]; then
+                echo "::error file=$f,line=${line%%:*}::Relation without business action or protocol: ${line#*:}"
+                fail=1
+              fi
+            done < <(grep -nE '^\s*Rel\(' "$f" || true)
+          done
+          if [ "$fail" -ne 0 ]; then echo "Pipeline failed. Status: CRITICAL FAILURE ❌"; exit 1; fi
+          echo "Coding standards check passed ✅"
+
+      - name: Validate PlantUML Syntax
+        run: |
+          find "$SRC_DIR" -name '*.puml' | sort > files.txt
+          while read -r f; do echo "[INFO] Checking PlantUML syntax for $f..."; done < files.txt
+          java -Djava.awt.headless=true -jar plantuml.jar -charset UTF-8 -checkonly -failfast2 $(cat files.txt)
+          echo "Parsed $(wc -l < files.txt) files successfully. No structural or syntax errors detected."
+
+      - name: Compile Diagrams to PNG and SVG
+        run: |
+          mkdir -p "$OUT_DIR"
+          java -Djava.awt.headless=true -DPLANTUML_LIMIT_SIZE=16384 -jar plantuml.jar -charset UTF-8 -failfast2 -tpng -o "$GITHUB_WORKSPACE/$OUT_DIR" $(cat files.txt)
+          java -Djava.awt.headless=true -jar plantuml.jar -charset UTF-8 -failfast2 -tsvg -o "$GITHUB_WORKSPACE/$OUT_DIR" $(cat files.txt)
+          for a in "$OUT_DIR"/*; do echo "Successfully rendered artifact: $a"; done
+          echo "Job completed with exit code 0. Status: SUCCESS ✅"
+
+      - name: Upload rendered diagrams as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: c4-diagrams
+          path: ${{ env.OUT_DIR }}
+
+      - name: Commit and Push Rendered Artifacts
+        if: github.event_name == 'push'
+        run: |
+          git config --global user.name 'DevOps Bot'
+          git config --global user.email 'devops-bot@users.noreply.github.com'
+          git add "$OUT_DIR"
+          git commit -m 'docs: auto-update architecture diagrams [skip ci]' || echo 'No changes to commit'
+          git push
