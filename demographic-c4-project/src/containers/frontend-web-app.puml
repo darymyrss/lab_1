@@ -1,0 +1,44 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Диаграмма контейнеров C4 (Level 2) — фокус на контейнере «Веб-интерфейс аналитика» (web_app)
+
+Person(analyst, "Демограф-аналитик", "Мониторинг, прогнозы, справки")
+Person(official, "Руководитель (ЛПР)", "Дашборды, радар рисков")
+Person(admin, "Администратор данных", "Данные и доступ")
+
+System_Boundary(demoscope, "ИС DemoScope") {
+    Container(web_app, "Веб-интерфейс аналитика", "React 18 / TypeScript / Tailwind CSS", "SPA: мониторинг, тепловая карта, прогноз, радар рисков, справки, администрирование")
+    Container(mobile_app, "Мобильное приложение", "React Native", "Экспресс-дашборд и радар рисков для руководителей")
+    Container(api_backend, "API Gateway & Core Service", "Python 3.12 / FastAPI", "REST API и WebSocket, авторизация, бизнес-логика мониторинга, рисков и справок")
+    Container(forecast_service, "Модуль прогнозирования", "Python / Statsmodels / NumPy", "Holt-Winters, ARIMA, когортно-компонентный метод; метрики точности")
+    Container(etl_service, "Сервис загрузки данных (ETL)", "Python / Pandas / APScheduler", "Загрузка выгрузок Росстата, очистка рядов, согласование при преобразованиях МО")
+    ContainerDb(database, "Центральная БД", "PostgreSQL 16", "Ряды показателей, половозрастная структура, прогнозы, пользователи, журнал аудита")
+    ContainerDb(redis_cache, "Кэш и брокер задач", "Redis 7", "Кэш ответов API, очередь задач расчёта, Pub/Sub событий")
+    ContainerDb(object_storage, "Объектное хранилище", "S3 (MinIO)", "Исходные выгрузки, Parquet-снимки рядов, PDF-справки")
+}
+
+System_Ext(emiss, "ЕМИСС / БД ПМО Росстата", "Источник рядов")
+System_Ext(esia, "ЕСИА (IAM)", "Аутентификация")
+System_Ext(gis_service, "GIS-сервис", "Тайлы и границы")
+System_Ext(llm_service, "LLM-сервис", "Текст выводов")
+
+Rel(analyst, web_app, "Работает в браузере", "HTTPS")
+Rel(admin, web_app, "Администрирует", "HTTPS")
+Rel(official, mobile_app, "Просматривает показатели", "HTTPS")
+Rel_D(web_app, api_backend, "Запросы данных и задач, события расчёта", "HTTPS / JSON, WSS")
+Rel(mobile_app, api_backend, "Запросы витрин", "HTTPS / JSON")
+Rel(web_app, esia, "Вход пользователя", "OAuth2 + PKCE")
+Rel(web_app, gis_service, "Тайлы и границы", "HTTPS")
+Rel(api_backend, esia, "Проверка токенов", "HTTPS / OAuth2")
+Rel(api_backend, forecast_service, "Постановка задач расчёта", "gRPC / HTTP2, 50051")
+Rel(api_backend, database, "Чтение и запись", "SQL / TCP, 5432")
+Rel(api_backend, redis_cache, "Кэш, подписка на события", "RESP / TCP, 6379")
+Rel(api_backend, object_storage, "Сохранение и выдача PDF", "S3 API / HTTPS")
+Rel(api_backend, llm_service, "Генерация выводов", "HTTPS / JSON")
+Rel(forecast_service, database, "Ряды и результаты прогнозов", "SQL / TCP, 5432")
+Rel(forecast_service, redis_cache, "Ход расчёта", "RESP / TCP, 6379")
+Rel(etl_service, emiss, "Получение выгрузок", "HTTPS")
+Rel(etl_service, object_storage, "Исходные файлы и Parquet", "S3 API / HTTPS")
+Rel(etl_service, database, "Загрузка очищенных рядов", "SQL / TCP, 5432")
+@enduml
