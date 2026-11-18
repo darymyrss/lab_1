@@ -1,4 +1,4 @@
-@startuml "DemoScope - Heatmap Styler Class Diagram"
+@startuml
 title Диаграмма классов UML (Level 4) — компонент Heatmap Styler (паттерн «Стратегия»)
 
 class HeatmapStylerContext {
