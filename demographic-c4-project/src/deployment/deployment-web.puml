@@ -1,6 +1,6 @@
-@startuml "DemoScope - Deployment Diagram"
-' Подключение официальной библиотеки макросов C4 напрямую из GitHub
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+@startuml
+' Подключение библиотеки C4 из стандартной библиотеки PlantUML (stdlib) — сборка в CI без обращения к внешним URL
+!include <C4/C4_Deployment>
 
 LAYOUT_WITH_LEGEND()
 title Диаграмма развёртывания (Level 2) — сегмент веб-интерфейса аналитика ИС DemoScope
