@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Context>
+title DemoScope — системный ландшафт контура данных
+Person(analyst, "Демограф-аналитик", "Анализ рядов и формирование справок")
+Enterprise_Boundary(gov_it, "Государственная ИТ-инфраструктура") {
+    System(demoscope, "DemoScope", "Мониторинг и прогноз населения РФ")
+    System(esia, "ЕСИА", "Вход и проверка полномочий")
+    System(emiss, "ЕМИСС / БД ПМО Росстата", "Официальные демографические ряды")
+    System(gas_upr, "ГАС «Управление»", "Мониторинг показателей")
+}
+System_Ext(ebudget, "ГИИС «Электронный бюджет»", "Планирование социальных расходов")
+System_Ext(oktmo_nsi, "Справочники ОКТМО", "Коды и изменения границ территорий")
+Rel(analyst, demoscope, "Анализирует ряды", "HTTPS")
+Rel(demoscope, esia, "Проверяет полномочия", "HTTPS / OAuth 2.0 / OIDC")
+Rel(demoscope, emiss, "Получает выгрузки", "HTTPS")
+Rel(demoscope, oktmo_nsi, "Получает справочники", "HTTPS / CSV, XML")
+Rel(demoscope, gas_upr, "Передаёт сводные индикаторы", "gRPC / TLS")
+Rel(demoscope, ebudget, "Передаёт агрегаты для планирования", "HTTPS / REST")
+@enduml

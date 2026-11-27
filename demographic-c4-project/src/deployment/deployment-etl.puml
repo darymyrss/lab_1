@@ -1,0 +1,42 @@
+@startuml
+!include <C4/C4_Deployment>
+LAYOUT_LEFT_RIGHT()
+title DemoScope — развёртывание контура обновления данных
+Deployment_Node(analyst_pc, "АРМ аналитика", "Windows, веб-браузер") {
+    Container(web_app, "Веб-интерфейс", "React 18 / TypeScript")
+}
+Deployment_Node(cloud, "Yandex Cloud", "ru-central1 / demoscope-vpc") {
+    Deployment_Node(dmz, "DMZ", "10.10.1.0/24") {
+        Container(lb, "Балансировщик L4", "Yandex NLB")
+        Container(nginx, "Веб-узлы ×2", "Nginx / Docker", "TLS-терминация и прокси")
+    }
+    Deployment_Node(app_subnet, "Подсеть приложений", "10.10.2.0/24") {
+        Deployment_Node(app_nodes, "Серверы приложений ×2", "Ubuntu 22.04 / Docker 26") {
+            Container(api_backend, "API Gateway & Core Service", "Python 3.12 / FastAPI")
+        }
+        Deployment_Node(etl_node, "ETL-узел", "Ubuntu 22.04 / Docker 26") {
+            Container(etl_service, "Сервис загрузки данных", "Python / Pandas", "Плановый прогон")
+            ContainerDb(data_store, "Том снимков", "Parquet / PyArrow")
+        }
+    }
+    Deployment_Node(db_subnet, "Подсеть БД", "10.10.3.0/24") {
+        Deployment_Node(db_master, "Основной узел, зона A", "Управляемая БД") {
+            ContainerDb(database, "Центральная БД", "PostgreSQL 16")
+        }
+        Deployment_Node(db_replica, "Реплика, зона B", "Управляемая БД") {
+            ContainerDb(database_replica, "Горячий резерв", "PostgreSQL 16")
+        }
+    }
+}
+System_Ext(emiss, "ЕМИСС / БД ПМО Росстата", "Официальные ряды")
+System_Ext(oktmo_nsi, "Справочники ОКТМО", "Коды территорий")
+Rel(web_app, lb, "Запросы SPA, API и события", "HTTPS / TLS 1.3, WSS, 443")
+Rel(lb, nginx, "Проброс соединений", "TCP 443")
+Rel(nginx, api_backend, "Проксирует API и WebSocket", "HTTP / JSON, WS, 8000")
+Rel(api_backend, database, "Читает витрины", "SQL / TCP + TLS, 5432")
+Rel(etl_service, database, "Пишет витрины и журнал", "SQL / TCP + TLS, 5432")
+Rel(database, database_replica, "Потоковая репликация", "WAL / TCP, 5432")
+Rel(etl_service, data_store, "Пишет снимок", "Файловый I/O")
+Rel(etl_service, emiss, "Получает выгрузки", "HTTPS / TLS, 443")
+Rel(etl_service, oktmo_nsi, "Получает справочники", "HTTPS / TLS, 443")
+@enduml
