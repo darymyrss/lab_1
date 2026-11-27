@@ -1,0 +1,33 @@
+@startuml
+!include <C4/C4_Component>
+title DemoScope — плановое обновление демографических витрин
+System_Ext(emiss, "ЕМИСС / БД ПМО Росстата", "Официальные ряды")
+System_Ext(oktmo_nsi, "Справочники ОКТМО", "Коды территорий")
+Container_Boundary(etl_service, "Сервис загрузки данных (ETL)") {
+    Component(pipeline_scheduler, "Оркестратор ETL", "Python", "Запуск по расписанию")
+    Component(rosstat_ingestor, "Коннектор Росстата", "Requests / OpenPyXL")
+    Component(emiss_ingestor, "Коннектор ЕМИСС", "Requests / lxml")
+    Component(territory_harmonizer, "Гармонизатор ОКТМО", "Pandas")
+    Component(imputation_engine, "Движок импутации", "Pandas / Strategy")
+    Component(aggregate_builder, "Расчёт витрин", "Pandas / NumPy")
+    Component(parquet_writer, "Экспорт Parquet", "PyArrow")
+    Component(dataset_publisher, "Загрузчик витрин", "SQLAlchemy")
+    Component(etl_audit_repo, "Журнал ETL", "SQLAlchemy")
+}
+ContainerDb(data_store, "Файлы снимков", "Apache Parquet")
+ContainerDb(database, "Центральная БД", "PostgreSQL 16")
+Rel(pipeline_scheduler, rosstat_ingestor, "1. Запускает загрузку", "Python Call")
+Rel(rosstat_ingestor, emiss, "2. Получает таблицы БД ПМО", "HTTPS / CSV, XLSX")
+Rel(pipeline_scheduler, emiss_ingestor, "3. Запускает загрузку", "Python Call")
+Rel(emiss_ingestor, emiss, "4. Получает ряды ЕМИСС", "HTTPS / SDMX, CSV")
+Rel(pipeline_scheduler, territory_harmonizer, "5. Передаёт сырые ряды", "Python Call")
+Rel(territory_harmonizer, oktmo_nsi, "6. Получает коды ОКТМО", "HTTPS / CSV, XML")
+Rel(pipeline_scheduler, imputation_engine, "7. Очищает и восстанавливает ряды", "Python Call")
+Rel(pipeline_scheduler, aggregate_builder, "8. Передаёт очищенные ряды", "Python Call")
+Rel(pipeline_scheduler, parquet_writer, "9. Передаёт ряды и витрины", "Python Call")
+Rel(parquet_writer, data_store, "10. Сохраняет снимок", "Файловый I/O")
+Rel(pipeline_scheduler, dataset_publisher, "11. Передаёт витрины", "Python Call")
+Rel(dataset_publisher, database, "12. Загружает ряды и витрины", "SQL / TCP + TLS, 5432")
+Rel(pipeline_scheduler, etl_audit_repo, "13. Передаёт итог и метрики", "Python Call")
+Rel(etl_audit_repo, database, "14. Записывает итог прогона", "SQL / TCP + TLS, 5432")
+@enduml

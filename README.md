@@ -11,6 +11,9 @@
 | ЛР2 | L3 Компоненты | `demographic-c4-project/src/components/web-analyst-components.puml` |
 | ЛР3 | L4 Код (UML Class + Python, паттерн «Стратегия») | `demographic-c4-project/src/code/heatmap-styler-classes.puml`, `demographic-c4-project/code/` |
 | ЛР4 | L0 Ландшафт, Dynamic, Deployment (L2) | `demographic-c4-project/src/landscape/system-landscape.puml`, `demographic-c4-project/src/dynamic/dynamic-forecast.puml`, `demographic-c4-project/src/deployment/deployment-web.puml` |
+| ЛР4 ETL | L0 Ландшафт, Dynamic, Deployment | [Ландшафт](demographic-c4-project/src/landscape/system-landscape-etl.puml), [Динамика ETL](demographic-c4-project/src/dynamic/dynamic-etl.puml), [Развёртывание ETL](demographic-c4-project/src/deployment/deployment-etl.puml) |
+
+В ЛР4 по контуру данных `etl_service` получает официальные ряды из `emiss`, применяет стадии очистки и записывает витрины и журнал в `database`. Снимок каждого прогона сохраняется в Parquet. Схема показывает исходящий HTTPS к источникам и запись в PostgreSQL по TCP 5432 с TLS.
 
 ## ЛР3: запуск кода
 
